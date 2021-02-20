@@ -1,17 +1,17 @@
 package org.academiadecodigo.bootcamp.webserver;
 
 import java.io.*;
-import java.net.HttpURLConnection;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Scanner;
 
 public class WebServer {
 
     private int port;
-    private URL url;
-    HttpURLConnection connection;
 
     public WebServer(int port) {
         this.port = port;
@@ -30,30 +30,53 @@ public class WebServer {
 
     public void start() throws IOException {
 
-        //url = new URL("http://localhost:8080");
-        //connection = (HttpURLConnection) url.openConnection();
-        //connection.setRequestMethod("GET");
-
         System.out.println("Server running on port " + port);
 
+        // Create server socket and client socket mirror listening for requests
         ServerSocket serverSocket = new ServerSocket(port);
         Socket clientSocket = serverSocket.accept();
 
-        DataOutputStream out = new DataOutputStream(new OutputStream(){
-            @Override
-            public void write(int b) throws IOException {
-
-            }
-        });
+        // To read the browser requests
         BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 
+        // Create output stream for the client socket
+        DataOutputStream out = new DataOutputStream(clientSocket.getOutputStream());
+
+        // Keep server running
         while (true) {
 
-            //String message = in.readLine();
-            //System.out.println(message);
+        String line = in.readLine();
+            System.out.println(line);
+
+            if (line.contains("GET / HTTP/1.1")) {
+
+                // 1 - write header
+                String header = "HTTP/1.1 200 OK\r\n" +
+                        "ContentType: text/html\r\n" +
+                        "\r\n";
+                out.write(header.getBytes());
+
+                // 2 - write home.html
+                byte[] pageContent = Files.readAllBytes(Path.of("resources/home.html"));
+                out.write(pageContent);
+
+                out.flush();
+                clientSocket.close();
+                }
+            }
         }
     }
 
+/*
+HTTP/1.0 200 Document Follows\r\n
+Content-Type: text/html; charset=UTF-8\r\n
+Content-Length: <file_byte_size> \r\n
+\r\n
+
+HTTP/1.0 200 Document Follows\r\n
+Content-Type: image/<image_file_extension> \r\n
+Content-Length: <file_byte_size> \r\n
+\r\n
 
 
-}
+ */
