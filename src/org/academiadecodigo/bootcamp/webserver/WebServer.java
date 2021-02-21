@@ -9,6 +9,7 @@ import java.nio.file.Path;
 public class WebServer {
 
     private int port;
+    ServerSocket serverSocket;
     BufferedReader in;
     DataOutputStream out;
 
@@ -34,30 +35,35 @@ public class WebServer {
         System.out.println("Server running on port " + port);
 
         // Create server socket and client socket mirror listening for requests
-        ServerSocket serverSocket = new ServerSocket(port);
-        Socket clientSocket = serverSocket.accept();
-
-        // To read the browser requests
-        in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-
-        // Create output stream for the client socket
-        out = new DataOutputStream(clientSocket.getOutputStream());
+        serverSocket = new ServerSocket(port);
 
         // Keep server running
         while (true) {
+            handleRequests();
+        }
+    }
+
+    public void handleRequests() throws IOException {
+
+            Socket clientSocket = serverSocket.accept();
+            // To read the browser requests
+            in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+
+            // Create output stream for the client socket
+            out = new DataOutputStream(clientSocket.getOutputStream());
 
             String line = in.readLine();
 
             if (line.contains("GET")) {
 
                 String route = line.split(" ")[1];
-                System.out.println(route);
 
                 if (route.equals("/")) {
                     getHomePage();
 
                 } else {
 
+                    // Check if there is a file with the same name as the route
                     if (pageExists(route)) {
                         getPage(route);
 
@@ -67,8 +73,7 @@ public class WebServer {
 
                 }
             }
-        //out.close();
-        }
+
     }
 
     public void getHomePage() throws IOException {
@@ -89,7 +94,6 @@ public class WebServer {
     public void getPage(String route) throws IOException {
 
         String path = Path.of("resources/pages" + route).toString() + ".html";
-        System.out.println(path);
 
         byte[] pageContent = Files.readAllBytes(Path.of(path));
 
