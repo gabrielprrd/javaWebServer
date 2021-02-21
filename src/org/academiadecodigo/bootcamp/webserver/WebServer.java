@@ -3,15 +3,14 @@ package org.academiadecodigo.bootcamp.webserver;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Scanner;
 
 public class WebServer {
 
     private int port;
+    BufferedReader in;
+    DataOutputStream out;
 
     public WebServer(int port) {
         this.port = port;
@@ -23,7 +22,9 @@ public class WebServer {
 
         try {
             webServer.start();
+
         } catch (IOException e) {
+
             e.printStackTrace();
         }
     }
@@ -37,46 +38,93 @@ public class WebServer {
         Socket clientSocket = serverSocket.accept();
 
         // To read the browser requests
-        BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+        in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 
         // Create output stream for the client socket
-        DataOutputStream out = new DataOutputStream(clientSocket.getOutputStream());
+        out = new DataOutputStream(clientSocket.getOutputStream());
 
         // Keep server running
         while (true) {
 
-        String line = in.readLine();
-            System.out.println(line);
+            String line = in.readLine();
 
-            if (line.contains("GET / HTTP/1.1")) {
+            if (line.contains("GET")) {
 
-                // 1 - write header
-                String header = "HTTP/1.1 200 OK\r\n" +
-                        "ContentType: text/html\r\n" +
-                        "\r\n";
-                out.write(header.getBytes());
+                String route = line.split(" ")[1];
+                System.out.println(route);
 
-                // 2 - write home.html
-                byte[] pageContent = Files.readAllBytes(Path.of("resources/home.html"));
-                out.write(pageContent);
+                if (route.equals("/")) {
+                    getHomePage();
 
-                out.flush();
-                clientSocket.close();
+                } else {
+
+                    if (pageExists(route)) {
+                        getPage(route);
+
+                    } else {
+                        get404Page();
+                    }
+
                 }
             }
+        //out.close();
         }
     }
 
-/*
-HTTP/1.0 200 Document Follows\r\n
-Content-Type: text/html; charset=UTF-8\r\n
-Content-Length: <file_byte_size> \r\n
-\r\n
+    public void getHomePage() throws IOException {
 
-HTTP/1.0 200 Document Follows\r\n
-Content-Type: image/<image_file_extension> \r\n
-Content-Length: <file_byte_size> \r\n
-\r\n
+        byte[] pageContent = Files.readAllBytes(Path.of("resources/pages/home.html"));
 
+        String header = "HTTP/1.1 200 OK\r\n" +
+                "ContentType: text/html\r\n" +
+                "Content-Length: " + pageContent.length + " \r\n" +
+                "\r\n";
 
- */
+        out.write(header.getBytes());
+        out.write(pageContent);
+
+        out.flush();
+    }
+
+    public void getPage(String route) throws IOException {
+
+        String path = Path.of("resources/pages" + route).toString() + ".html";
+        System.out.println(path);
+
+        byte[] pageContent = Files.readAllBytes(Path.of(path));
+
+        String header = "HTTP/1.1 200 OK\r\n" +
+                "ContentType: text/html\r\n" +
+                "Content-Length: " + pageContent.length + " \r\n" +
+                "\r\n";
+
+        out.write(header.getBytes());
+        out.write(pageContent);
+
+        out.flush();
+    }
+
+    public void get404Page() throws IOException {
+
+        byte[] pageContent = Files.readAllBytes(Path.of("resources/pages/404.html"));
+        String header = "HTTP/1.0 404 Not Found\r\n" +
+                "Content-Type: text/html; charset=UTF-8\r\n" +
+                "Content-Length: " + pageContent.length + " \r\n" +
+                "\r\n";
+
+        out.write(header.getBytes());
+        out.write(pageContent);
+        out.flush();
+    }
+
+    public boolean pageExists(String route) {
+
+        File[] dirArray = new File("resources/pages").listFiles();
+
+        assert dirArray != null;
+        for (File file : dirArray) {
+            if (("/" + file.getName()).equals(route + ".html")) return true;
+        }
+        return false;
+    }
+}
